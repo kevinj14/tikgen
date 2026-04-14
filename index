@@ -1,0 +1,859 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>TikGen — Générateur TikTok IA</title>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #080808;
+    --surface: #111111;
+    --surface2: #1a1a1a;
+    --border: #252525;
+    --pink: #ff2d55;
+    --cyan: #00f5ff;
+    --yellow: #ffdd00;
+    --text: #f5f5f5;
+    --muted: #555;
+    --radius: 16px;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'DM Sans', sans-serif;
+    min-height: 100vh;
+    padding-bottom: 60px;
+    overflow-x: hidden;
+  }
+
+  /* Animated background */
+  body::before {
+    content: '';
+    position: fixed;
+    top: -50%;
+    left: -50%;
+    width: 200%;
+    height: 200%;
+    background: radial-gradient(ellipse at 20% 20%, rgba(255,45,85,0.06) 0%, transparent 50%),
+                radial-gradient(ellipse at 80% 80%, rgba(0,245,255,0.06) 0%, transparent 50%);
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  .wrap { position: relative; z-index: 1; }
+
+  /* Header */
+  header {
+    padding: 32px 20px 20px;
+    text-align: center;
+  }
+
+  .logo {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 52px;
+    letter-spacing: 2px;
+    line-height: 1;
+    background: linear-gradient(135deg, var(--pink), var(--cyan));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  .tagline {
+    font-size: 13px;
+    color: var(--muted);
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    margin-top: 6px;
+  }
+
+  /* API Key section */
+  .api-section {
+    margin: 0 20px 20px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 16px;
+  }
+
+  .api-label {
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 10px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+
+  .api-status {
+    font-size: 11px;
+    padding: 3px 10px;
+    border-radius: 100px;
+    font-weight: 600;
+    letter-spacing: 0;
+    text-transform: none;
+  }
+
+  .api-status.ok { background: rgba(0,245,255,0.1); color: var(--cyan); }
+  .api-status.missing { background: rgba(255,45,85,0.1); color: var(--pink); }
+
+  .api-input-row {
+    display: flex;
+    gap: 8px;
+  }
+
+  .api-input {
+    flex: 1;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    color: var(--text);
+    font-family: 'DM Mono', monospace;
+    font-size: 12px;
+    padding: 10px 12px;
+    outline: none;
+  }
+
+  .api-input:focus { border-color: var(--cyan); }
+
+  .api-save-btn {
+    background: var(--cyan);
+    border: none;
+    border-radius: 10px;
+    color: #000;
+    font-weight: 700;
+    font-size: 13px;
+    padding: 10px 16px;
+    cursor: pointer;
+    white-space: nowrap;
+  }
+
+  /* Main generator */
+  .main { padding: 0 20px; }
+
+  .section-title {
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 12px;
+  }
+
+  /* Theme input */
+  .theme-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 16px;
+    margin-bottom: 14px;
+  }
+
+  .theme-input {
+    width: 100%;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    color: var(--text);
+    font-family: 'DM Sans', sans-serif;
+    font-size: 16px;
+    padding: 14px 16px;
+    outline: none;
+    transition: border-color 0.2s;
+    resize: none;
+  }
+
+  .theme-input:focus { border-color: var(--pink); }
+  .theme-input::placeholder { color: var(--muted); }
+
+  /* Niche pills */
+  .pills {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    margin-top: 12px;
+  }
+
+  .pill {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 100px;
+    padding: 6px 14px;
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--muted);
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+
+  .pill:active, .pill.selected {
+    background: var(--pink);
+    border-color: var(--pink);
+    color: white;
+  }
+
+  /* Generate button */
+  .gen-btn {
+    width: 100%;
+    background: linear-gradient(135deg, var(--pink), #ff6b8a);
+    border: none;
+    border-radius: 14px;
+    color: white;
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 24px;
+    letter-spacing: 2px;
+    padding: 18px;
+    cursor: pointer;
+    transition: transform 0.1s, opacity 0.2s;
+    margin-bottom: 24px;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .gen-btn:active { transform: scale(0.98); }
+  .gen-btn:disabled { opacity: 0.5; }
+
+  .gen-btn::after {
+    content: '';
+    position: absolute;
+    top: 0; left: -100%;
+    width: 100%; height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.15), transparent);
+    transition: left 0.4s;
+  }
+
+  .gen-btn:not(:disabled):active::after { left: 100%; }
+
+  /* Loading */
+  .loading {
+    display: none;
+    text-align: center;
+    padding: 40px 20px;
+  }
+
+  .loading.show { display: block; }
+
+  .loader {
+    width: 40px;
+    height: 40px;
+    border: 3px solid var(--border);
+    border-top-color: var(--pink);
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+    margin: 0 auto 16px;
+  }
+
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  .loading-text {
+    font-size: 14px;
+    color: var(--muted);
+    animation: pulse 1.5s ease-in-out infinite;
+  }
+
+  @keyframes pulse { 0%,100% { opacity: 0.5; } 50% { opacity: 1; } }
+
+  /* Results */
+  .results { display: none; }
+  .results.show { display: block; }
+
+  .result-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    margin-bottom: 14px;
+    overflow: hidden;
+  }
+
+  .result-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 14px 16px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .result-label {
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+
+  .result-label.pink { color: var(--pink); }
+  .result-label.cyan { color: var(--cyan); }
+  .result-label.yellow { color: var(--yellow); }
+
+  .copy-btn {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    color: var(--text);
+    font-size: 12px;
+    font-weight: 600;
+    padding: 6px 12px;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+
+  .copy-btn.copied {
+    background: rgba(0,245,255,0.1);
+    border-color: var(--cyan);
+    color: var(--cyan);
+  }
+
+  .result-content {
+    padding: 16px;
+    font-size: 15px;
+    line-height: 1.7;
+    color: var(--text);
+    white-space: pre-wrap;
+  }
+
+  .result-content.hook {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 26px;
+    letter-spacing: 1px;
+    line-height: 1.3;
+    color: var(--pink);
+  }
+
+  /* Subtitles */
+  .subtitle-line {
+    display: inline-block;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 6px 12px;
+    margin: 4px 4px 4px 0;
+    font-size: 14px;
+    font-family: 'DM Mono', monospace;
+    color: var(--cyan);
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+
+  .subtitle-line:active {
+    background: rgba(0,245,255,0.1);
+    border-color: var(--cyan);
+  }
+
+  /* Hashtags */
+  .hashtag {
+    display: inline-block;
+    background: rgba(255,221,0,0.08);
+    border: 1px solid rgba(255,221,0,0.2);
+    border-radius: 100px;
+    padding: 5px 12px;
+    margin: 4px 4px 4px 0;
+    font-size: 13px;
+    color: var(--yellow);
+    font-weight: 500;
+  }
+
+  /* Voice section */
+  .voice-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 16px;
+    margin-bottom: 14px;
+  }
+
+  .voice-controls {
+    display: flex;
+    gap: 10px;
+    margin-top: 12px;
+  }
+
+  .voice-btn {
+    flex: 1;
+    padding: 14px;
+    border: none;
+    border-radius: 12px;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+
+  .voice-btn.play {
+    background: linear-gradient(135deg, var(--cyan), #00a8b5);
+    color: #000;
+  }
+
+  .voice-btn.stop {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    color: var(--text);
+  }
+
+  .voice-btn:disabled { opacity: 0.4; }
+
+  .speed-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-top: 12px;
+  }
+
+  .speed-label {
+    font-size: 12px;
+    color: var(--muted);
+    white-space: nowrap;
+  }
+
+  .speed-slider {
+    flex: 1;
+    -webkit-appearance: none;
+    height: 4px;
+    background: var(--border);
+    border-radius: 2px;
+    outline: none;
+  }
+
+  .speed-slider::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    background: var(--cyan);
+    cursor: pointer;
+  }
+
+  .speed-value {
+    font-family: 'DM Mono', monospace;
+    font-size: 12px;
+    color: var(--cyan);
+    min-width: 30px;
+  }
+
+  /* New generation btn */
+  .new-btn {
+    width: 100%;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    color: var(--text);
+    font-family: 'DM Sans', sans-serif;
+    font-size: 15px;
+    font-weight: 600;
+    padding: 16px;
+    cursor: pointer;
+    margin-bottom: 14px;
+  }
+
+  /* Toast */
+  .toast {
+    position: fixed;
+    bottom: 30px;
+    left: 50%;
+    transform: translateX(-50%) translateY(100px);
+    background: var(--cyan);
+    color: #000;
+    font-weight: 700;
+    font-size: 14px;
+    padding: 12px 24px;
+    border-radius: 100px;
+    transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+    z-index: 999;
+    white-space: nowrap;
+  }
+
+  .toast.show { transform: translateX(-50%) translateY(0); }
+
+  /* Error */
+  .error-card {
+    background: rgba(255,45,85,0.08);
+    border: 1px solid rgba(255,45,85,0.3);
+    border-radius: var(--radius);
+    padding: 16px;
+    margin-bottom: 14px;
+    font-size: 14px;
+    color: var(--pink);
+    display: none;
+  }
+
+  .error-card.show { display: block; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header>
+    <div class="logo">TikGen</div>
+    <div class="tagline">Générateur de contenu TikTok IA</div>
+  </header>
+
+  <!-- API Key -->
+  <div class="api-section">
+    <div class="api-label">
+      Clé API Claude
+      <span class="api-status missing" id="apiStatus">Non configurée</span>
+    </div>
+    <div class="api-input-row">
+      <input type="password" class="api-input" id="apiKeyInput" placeholder="sk-ant-api03-...">
+      <button class="api-save-btn" onclick="saveApiKey()">Sauver</button>
+    </div>
+  </div>
+
+  <div class="main">
+
+    <!-- Theme -->
+    <div class="theme-card">
+      <div class="section-title">Ton sujet / thème</div>
+      <textarea class="theme-input" id="themeInput" rows="3" placeholder="Ex: fait insolite sur les animaux, mythe sur le cerveau humain, secret sur l'espace..."></textarea>
+      <div class="pills">
+        <div class="pill" onclick="setPill(this, '🐾 Animaux insolites')">🐾 Animaux</div>
+        <div class="pill" onclick="setPill(this, '🧠 Cerveau & psychologie')">🧠 Cerveau</div>
+        <div class="pill" onclick="setPill(this, '🌌 Espace & univers')">🌌 Espace</div>
+        <div class="pill" onclick="setPill(this, '🏛️ Histoire secrète')">🏛️ Histoire</div>
+        <div class="pill" onclick="setPill(this, '🔬 Science étonnante')">🔬 Science</div>
+        <div class="pill" onclick="setPill(this, '💰 Argent & économie')">💰 Argent</div>
+      </div>
+    </div>
+
+    <button class="gen-btn" id="genBtn" onclick="generate()">⚡ GÉNÉRER MA VIDÉO</button>
+
+    <!-- Error -->
+    <div class="error-card" id="errorCard"></div>
+
+    <!-- Loading -->
+    <div class="loading" id="loading">
+      <div class="loader"></div>
+      <div class="loading-text" id="loadingText">Génération du script en cours...</div>
+    </div>
+
+    <!-- Results -->
+    <div class="results" id="results">
+
+      <!-- Hook -->
+      <div class="result-card">
+        <div class="result-header">
+          <span class="result-label pink">🎣 Hook — 3 premières secondes</span>
+          <button class="copy-btn" onclick="copyText('hookContent', this)">Copier</button>
+        </div>
+        <div class="result-content hook" id="hookContent"></div>
+      </div>
+
+      <!-- Script -->
+      <div class="result-card">
+        <div class="result-header">
+          <span class="result-label cyan">📝 Script complet</span>
+          <button class="copy-btn" onclick="copyText('scriptContent', this)">Copier</button>
+        </div>
+        <div class="result-content" id="scriptContent"></div>
+      </div>
+
+      <!-- Voice -->
+      <div class="voice-card">
+        <div class="section-title">🎙 Voix IA gratuite</div>
+        <div class="speed-row">
+          <span class="speed-label">Vitesse</span>
+          <input type="range" class="speed-slider" id="speedSlider" min="0.7" max="1.5" step="0.05" value="1.0" oninput="updateSpeed()">
+          <span class="speed-value" id="speedValue">1.0x</span>
+        </div>
+        <div class="voice-controls">
+          <button class="voice-btn play" id="playBtn" onclick="playVoice()">▶ Écouter le script</button>
+          <button class="voice-btn stop" id="stopBtn" onclick="stopVoice()" disabled>⏹ Stop</button>
+        </div>
+      </div>
+
+      <!-- Subtitles -->
+      <div class="result-card">
+        <div class="result-header">
+          <span class="result-label yellow">💬 Sous-titres CapCut</span>
+          <button class="copy-btn" onclick="copyText('subtitlesContent', this)">Copier tout</button>
+        </div>
+        <div class="result-content" id="subtitlesContent"></div>
+      </div>
+
+      <!-- Description -->
+      <div class="result-card">
+        <div class="result-header">
+          <span class="result-label pink">📱 Description TikTok</span>
+          <button class="copy-btn" onclick="copyText('descContent', this)">Copier</button>
+        </div>
+        <div class="result-content" id="descContent"></div>
+      </div>
+
+      <!-- Hashtags -->
+      <div class="result-card">
+        <div class="result-header">
+          <span class="result-label yellow"># Hashtags</span>
+          <button class="copy-btn" onclick="copyText('hashtagsRaw', this)">Copier</button>
+        </div>
+        <div class="result-content" id="hashtagsContent"></div>
+        <span id="hashtagsRaw" style="display:none"></span>
+      </div>
+
+      <button class="new-btn" onclick="resetForm()">🔄 Générer un nouveau script</button>
+
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast">✓ Copié !</div>
+
+<script>
+let currentSpeech = null;
+let apiKey = localStorage.getItem('tikgen_api_key') || '';
+
+// Init
+if (apiKey) {
+  document.getElementById('apiKeyInput').value = apiKey;
+  document.getElementById('apiStatus').textContent = 'Configurée ✓';
+  document.getElementById('apiStatus').className = 'api-status ok';
+}
+
+function saveApiKey() {
+  const key = document.getElementById('apiKeyInput').value.trim();
+  if (!key) return;
+  apiKey = key;
+  localStorage.setItem('tikgen_api_key', key);
+  document.getElementById('apiStatus').textContent = 'Configurée ✓';
+  document.getElementById('apiStatus').className = 'api-status ok';
+  showToast('Clé API sauvegardée !');
+}
+
+function setPill(el, text) {
+  document.querySelectorAll('.pill').forEach(p => p.classList.remove('selected'));
+  el.classList.add('selected');
+  document.getElementById('themeInput').value = text;
+}
+
+function updateSpeed() {
+  const val = parseFloat(document.getElementById('speedSlider').value).toFixed(2);
+  document.getElementById('speedValue').textContent = val + 'x';
+}
+
+async function generate() {
+  const theme = document.getElementById('themeInput').value.trim();
+
+  if (!apiKey) {
+    showError('⚠️ Configure ta clé API Claude en haut de la page d\'abord !');
+    return;
+  }
+
+  if (!theme) {
+    showError('⚠️ Entre un sujet ou choisis une catégorie !');
+    return;
+  }
+
+  // UI state
+  document.getElementById('genBtn').disabled = true;
+  document.getElementById('loading').classList.add('show');
+  document.getElementById('results').classList.remove('show');
+  document.getElementById('errorCard').classList.remove('show');
+
+  const loadingTexts = [
+    'Génération du hook accrocheur...',
+    'Rédaction du script en cours...',
+    'Création des sous-titres...',
+    'Optimisation des hashtags...',
+    'Finalisation du contenu...'
+  ];
+
+  let i = 0;
+  const loadingInterval = setInterval(() => {
+    document.getElementById('loadingText').textContent = loadingTexts[i % loadingTexts.length];
+    i++;
+  }, 1500);
+
+  try {
+    const prompt = `Tu es un expert en création de contenu viral TikTok francophone. 
+Génère un contenu TikTok complet sur ce sujet : "${theme}"
+
+Réponds UNIQUEMENT en JSON valide avec cette structure exacte :
+{
+  "hook": "phrase d'accroche ultra percutante de max 10 mots pour les 3 premières secondes",
+  "script": "script complet de 60 à 90 secondes (environ 150-200 mots), captivant, avec des faits précis et vérifiables, se terminant par 'Abonne-toi pour un fait insolite par jour.'",
+  "subtitles": ["phrase 1 courte", "phrase 2 courte", "phrase 3 courte", "..."],
+  "description": "description TikTok accrocheuse de 2-3 lignes maximum",
+  "hashtags": ["#hashtag1", "#hashtag2", "#hashtag3", "#hashtag4", "#hashtag5", "#hashtag6", "#hashtag7", "#hashtag8"]
+}
+
+Le hook doit commencer par une question ou une affirmation choc.
+Les sous-titres doivent découper le script en phrases courtes de 5-8 mots maximum.
+Les hashtags doivent être en français et en anglais, populaires sur TikTok.`;
+
+    const response = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': apiKey,
+        'anthropic-version': '2023-06-01',
+        'anthropic-dangerous-direct-browser-access': 'true'
+      },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-20250514',
+        max_tokens: 1500,
+        messages: [{ role: 'user', content: prompt }]
+      })
+    });
+
+    clearInterval(loadingInterval);
+
+    if (!response.ok) {
+      const err = await response.json();
+      throw new Error(err.error?.message || 'Erreur API');
+    }
+
+    const data = await response.json();
+    const text = data.content[0].text;
+
+    // Parse JSON
+    const jsonMatch = text.match(/\{[\s\S]*\}/);
+    if (!jsonMatch) throw new Error('Format de réponse invalide');
+
+    const content = JSON.parse(jsonMatch[0]);
+    displayResults(content);
+
+  } catch (err) {
+    clearInterval(loadingInterval);
+    showError('❌ Erreur : ' + err.message + (err.message.includes('401') ? ' — Vérifie ta clé API' : ''));
+  } finally {
+    document.getElementById('loading').classList.remove('show');
+    document.getElementById('genBtn').disabled = false;
+  }
+}
+
+function displayResults(content) {
+  // Hook
+  document.getElementById('hookContent').textContent = content.hook || '';
+
+  // Script
+  document.getElementById('scriptContent').textContent = content.script || '';
+
+  // Subtitles
+  const subsEl = document.getElementById('subtitlesContent');
+  subsEl.innerHTML = '';
+  if (Array.isArray(content.subtitles)) {
+    content.subtitles.forEach(line => {
+      const span = document.createElement('span');
+      span.className = 'subtitle-line';
+      span.textContent = line;
+      span.onclick = () => { navigator.clipboard?.writeText(line); showToast('Ligne copiée !'); };
+      subsEl.appendChild(span);
+    });
+  }
+
+  // Description
+  document.getElementById('descContent').textContent = content.description || '';
+
+  // Hashtags
+  const hashEl = document.getElementById('hashtagsContent');
+  hashEl.innerHTML = '';
+  const rawHashtags = [];
+  if (Array.isArray(content.hashtags)) {
+    content.hashtags.forEach(tag => {
+      rawHashtags.push(tag);
+      const span = document.createElement('span');
+      span.className = 'hashtag';
+      span.textContent = tag;
+      hashEl.appendChild(span);
+    });
+  }
+  document.getElementById('hashtagsRaw').textContent = rawHashtags.join(' ');
+
+  // Show results
+  document.getElementById('results').classList.add('show');
+  document.getElementById('results').scrollIntoView({ behavior: 'smooth' });
+}
+
+function playVoice() {
+  const script = document.getElementById('scriptContent').textContent;
+  if (!script) return;
+
+  stopVoice();
+
+  const utterance = new SpeechSynthesisUtterance(script);
+  utterance.lang = 'fr-FR';
+  utterance.rate = parseFloat(document.getElementById('speedSlider').value);
+  utterance.pitch = 1.0;
+
+  // Try to find a French voice
+  const voices = speechSynthesis.getVoices();
+  const frVoice = voices.find(v => v.lang.startsWith('fr'));
+  if (frVoice) utterance.voice = frVoice;
+
+  utterance.onend = () => {
+    document.getElementById('playBtn').disabled = false;
+    document.getElementById('stopBtn').disabled = true;
+  };
+
+  currentSpeech = utterance;
+  speechSynthesis.speak(utterance);
+
+  document.getElementById('playBtn').disabled = true;
+  document.getElementById('stopBtn').disabled = false;
+}
+
+function stopVoice() {
+  speechSynthesis.cancel();
+  currentSpeech = null;
+  document.getElementById('playBtn').disabled = false;
+  document.getElementById('stopBtn').disabled = true;
+}
+
+function copyText(elementId, btn) {
+  const text = document.getElementById(elementId).textContent;
+  navigator.clipboard?.writeText(text).then(() => {
+    btn.textContent = '✓ Copié';
+    btn.classList.add('copied');
+    showToast('Copié !');
+    setTimeout(() => {
+      btn.textContent = 'Copier';
+      btn.classList.remove('copied');
+    }, 2000);
+  }).catch(() => {
+    // Fallback
+    const el = document.getElementById(elementId);
+    const range = document.createRange();
+    range.selectNode(el);
+    window.getSelection().removeAllRanges();
+    window.getSelection().addRange(range);
+    document.execCommand('copy');
+    showToast('Copié !');
+  });
+}
+
+function showError(msg) {
+  const el = document.getElementById('errorCard');
+  el.textContent = msg;
+  el.classList.add('show');
+  document.getElementById('loading').classList.remove('show');
+  document.getElementById('genBtn').disabled = false;
+}
+
+function showToast(msg = '✓ Copié !') {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2000);
+}
+
+function resetForm() {
+  document.getElementById('results').classList.remove('show');
+  document.getElementById('themeInput').value = '';
+  document.querySelectorAll('.pill').forEach(p => p.classList.remove('selected'));
+  stopVoice();
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+// Load voices
+speechSynthesis.onvoiceschanged = () => speechSynthesis.getVoices();
+</script>
+</body>
+</html>
